@@ -20,7 +20,7 @@ def fetch_all_openalex_articles(query, output_file="data/openalex(PSU)_results_a
             response = requests.get(base_url, params=params, timeout=30)
             response.raise_for_status()
         except requests.RequestException as e:
-            print(f"❌ Error fetching page {page}: {e}")
+            print(f"Error fetching page {page}: {e}")
             break
 
         data = response.json()
@@ -43,7 +43,7 @@ def fetch_all_openalex_articles(query, output_file="data/openalex(PSU)_results_a
             all_articles.append(article)
 
         total_fetched += len(results)
-        print(f"✅ Page {page}: fetched {len(results)} articles (total so far: {total_fetched})")
+        print(f"Page {page}: fetched {len(results)} articles (total so far: {total_fetched})")
         page += 1
 
         if not results:
@@ -55,7 +55,7 @@ def fetch_all_openalex_articles(query, output_file="data/openalex(PSU)_results_a
     # Save to CSV
     df = pd.DataFrame(all_articles)
     df.to_csv(output_file, index=False, encoding="utf-8-sig")
-    print(f"\n✅ Completed. Total {len(df)} articles saved to {output_file}")
+    print(f"\nCompleted. Total {len(df)} articles saved to {output_file}")
 
 if __name__ == "__main__":
     fetch_all_openalex_articles("Prince of Songkla University")
