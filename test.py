@@ -1,57 +1,64 @@
-import requests
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 import time
 
-def fetch_all_openalex_articles(query, output_file="openalex_results_all.csv", per_page=200):
-    base_url = "https://api.openalex.org/works"
-    cursor = "*"
-    all_articles = []
-    total_fetched = 0
-    page = 1
+def scrape_tci_from_advance(university_name="มหาวิทยาลัยสงขลานครินทร์", output_file="tci_psu_results.csv"):
+    options = Options()
+    # options.add_argument("--headless")  # เปิดหน้าจอไว้ดูก่อน
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
 
-    while cursor:
-        params = {
-            "search": query,
-            "per-page": per_page,
-            "cursor": cursor
-        }
+    driver = webdriver.Chrome(options=options)
+    wait = WebDriverWait(driver, 10)
 
-        try:
-            response = requests.get(base_url, params=params, timeout=30)
-            response.raise_for_status()
-        except requests.RequestException as e:
-            print(f"Error fetching page {page}: {e}")
-            break
+    # 1. เปิดหน้าค้นหาขั้นสูง
+    driver.get("https://search.tci-thailand.org/advance_search.html")
 
-        data = response.json()
-        results = data.get("results", [])
-        cursor = data.get("meta", {}).get("next_cursor")
+    # 2. กรอกชื่อมหาวิทยาลัยในช่อง "หน่วยงาน"
+    # รอให้ input โหลด
+    wait.until(EC.presence_of_element_located((By.NAME, "keyword[]")))
+    search_input = driver.find_element(By.NAME, "keyword[]")
 
-        for work in results:
-            article = {
-                "title": work.get("title"),
-                "doi": work.get("doi"),
-                "authors": ", ".join([a["author"]["display_name"] for a in work.get("authorships", [])]),
-                "publication_year": work.get("publication_year"),
-                "host_venue": work.get("host_venue", {}).get("display_name")
-            }
-            all_articles.append(article)
+    # กรอกชื่อมหาวิทยาลัย
+    search_input.clear()
+    search_input.send_keys(university_name)
 
-        total_fetched += len(results)
-        print(f"Page {page}: fetched {len(results)} articles (total so far: {total_fetched})")
-        page += 1
+    # กดปุ่มค้นหา
+    wait.until(EC.element_to_be_clickable((By.ID, "searchBtn")))
+    search_button = driver.find_element(By.ID, "searchBtn")
+    search_button.click()
 
-        # ป้องกัน server overload
-        time.sleep(1)
+    # 4. รอผลลัพธ์
+    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.result")))
+    time.sleep(2)  # ให้โหลดข้อมูลให้เสร็จสมบูรณ์
 
-        if not results:
-            print("No more results.")
-            break
+    results = []
+    article_divs = driver.find_elements(By.CSS_SELECTOR, "div.result")
 
-    # Save to CSV
-    df = pd.DataFrame(all_articles)
+    for div in article_divs:
+        title = div.find_element(By.CLASS_NAME, "title").text.strip() if div.find_elements(By.CLASS_NAME, "title") else ""
+        journal = div.find_element(By.CLASS_NAME, "journal").text.strip() if div.find_elements(By.CLASS_NAME, "journal") else ""
+        year = div.find_element(By.CLASS_NAME, "year").text.strip() if div.find_elements(By.CLASS_NAME, "year") else ""
+
+        results.append({
+            "title": title,
+            "journal": journal,
+            "year": year
+        })
+
+    print(f"✅ พบ {len(results)} บทความจาก {university_name}")
+
+    driver.quit()
+
+    # 5. บันทึกไฟล์ CSV
+    df = pd.DataFrame(results)
     df.to_csv(output_file, index=False, encoding="utf-8-sig")
-    print(f"\nCompleted. Total {len(df)} articles saved to {output_file}")
+    print(f"📁 บันทึกไฟล์เรียบร้อยที่ {output_file}")
 
 if __name__ == "__main__":
-    fetch_all_openalex_articles("Prince of Songkla University")
+    scrape_tci_from_advance()
