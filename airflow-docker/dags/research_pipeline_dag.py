@@ -2,16 +2,18 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.utils.dates import days_ago
+from airflow.hooks.base import BaseHook
 
 import pandas as pd
 import os
 from sqlalchemy import create_engine
-from q2_pipeline_db.processors.data_processor import DataProcessor
+from q2_pipeline_db.processors.class_data_processor import DataProcessor
 
 # Config
 DATA_DIR = "/opt/airflow/q2_pipeline_db/data"
 SQL_PATH = "/opt/airflow/q2_pipeline_db/sql/create_tables.sql"
-POSTGRES_CONN_STRING = "postgresql+psycopg2://postgres:postgres@postgres:5432/research_db"
+conn = BaseHook.get_connection("postgres_default")
+POSTGRES_CONN_STRING = f"postgresql+psycopg2://{conn.login}:{conn.password}@{conn.host}:{conn.port}/{conn.schema}"
 
 # Global storage (simple)
 cleaned_data = {}
