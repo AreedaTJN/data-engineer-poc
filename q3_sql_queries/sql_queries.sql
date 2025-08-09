@@ -74,7 +74,12 @@ JOIN sources s ON a.source_id = s.source_id
 WHERE s.source_name ILIKE 'scopus'
 AND a.output_year > 2022;
 
-
+-- 4. ค้นหารายชื่อวารสารที่ตีพิมพ์มากที่สุด 5 อันดับแรก
+SELECT journal, COUNT(*) AS article_count
+FROM articles
+GROUP BY journal
+ORDER BY article_count DESC
+LIMIT 5;
 
 -- 5. ค้นหารายชื่อผู้แต่งที่เคยมีผลงานตีพิพม์ในวารสารที่มาจากทั้ง 3 ฐานข้อมูล
 WITH authors_expanded AS (
@@ -82,7 +87,7 @@ WITH authors_expanded AS (
     TRIM(unnest(string_to_array(author, ';'))) AS author_name,
     s.source_name
   FROM articles a
-  JOIN source s ON a.source_id = s.id
+  JOIN sources s ON a.source_id = s.source_id
   WHERE author IS NOT NULL
 ),
 author_source_count AS (
@@ -113,6 +118,8 @@ WHERE scopus_count > 0 AND wos_count > 0 AND tci_count > 0  -- ต้องม�
 ORDER BY total_score DESC;
 
 
+GRANT USAGE ON SCHEMA public TO "AreedaTJ";
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO "AreedaTJ";
 
 
 
